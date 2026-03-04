@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 
 // ============================================================
-// HomeCare AI — Live Demo (Claude API 연동)
+// HomeCare AI — Live Demo (OpenAI GPT-5.3 연동)
 // 실제 AI가 동작하는 간소화 버전
 // ============================================================
 
@@ -33,22 +33,22 @@ const PATIENT = {
   todayCGAFI: "21/50 (3점 상승)", todayKMMSE: "22/30 (3점 하락)", todayPHQ9: "10/27 (2점 상승)",
 };
 
-// --- Claude API Call ---
-async function callClaude(apiKey, systemPrompt, userMessage, onChunk) {
-  const res = await fetch("https://api.anthropic.com/v1/messages", {
+// --- OpenAI API Call ---
+async function callLLM(apiKey, systemPrompt, userMessage, onChunk) {
+  const res = await fetch("https://api.openai.com/v1/chat/completions", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      "x-api-key": apiKey,
-      "anthropic-version": "2023-06-01",
-      "anthropic-dangerous-direct-browser-access": "true",
+      "Authorization": `Bearer ${apiKey}`,
     },
     body: JSON.stringify({
-      model: "claude-sonnet-4-5-20250929",
+      model: "gpt-5.3",
       max_tokens: 8192,
       stream: true,
-      system: systemPrompt,
-      messages: [{ role: "user", content: userMessage }],
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: userMessage },
+      ],
     }),
   });
 
@@ -72,8 +72,9 @@ async function callClaude(apiKey, systemPrompt, userMessage, onChunk) {
         if (data === "[DONE]") continue;
         try {
           const parsed = JSON.parse(data);
-          if (parsed.type === "content_block_delta" && parsed.delta?.text) {
-            full += parsed.delta.text;
+          const delta = parsed.choices?.[0]?.delta?.content;
+          if (delta) {
+            full += delta;
             onChunk(full);
           }
         } catch {}
@@ -243,7 +244,7 @@ function StatusBar() {
       <span style={{ fontWeight: 600 }}>9:41</span>
       <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
         <span style={{ width: 6, height: 6, borderRadius: 3, background: C.success }} />
-        <span style={{ fontSize: 10 }}>HomeCare AI Live</span>
+        <span style={{ fontSize: 10 }}>HomeCare AI GPT</span>
       </div>
       <span>🔋</span>
     </div>
@@ -256,8 +257,8 @@ function ApiKeyScreen({ onSubmit }) {
   const [error, setError] = useState("");
 
   const handleSubmit = () => {
-    if (!key.startsWith("sk-ant-")) {
-      setError("올바른 Claude API 키를 입력해주세요 (sk-ant-로 시작)");
+    if (!key.startsWith("sk-")) {
+      setError("올바른 OpenAI API 키를 입력해주세요 (sk-로 시작)");
       return;
     }
     onSubmit(key);
@@ -268,16 +269,16 @@ function ApiKeyScreen({ onSubmit }) {
       <div style={{ textAlign: "center", marginBottom: 32 }}>
         <div style={{ fontSize: 40, marginBottom: 12 }}>🏥</div>
         <div style={{ fontSize: 22, fontWeight: 800, color: C.primaryDark }}>HomeCare AI</div>
-        <div style={{ fontSize: 13, color: C.textMed, marginTop: 4 }}>Live Demo — Claude API 연동</div>
+        <div style={{ fontSize: 13, color: C.textMed, marginTop: 4 }}>Live Demo — GPT-5.3 API 연동</div>
       </div>
 
       <div style={{ background: C.white, borderRadius: 12, padding: 16, marginBottom: 12, border: `1px solid ${C.border}` }}>
-        <div style={{ fontSize: 12, fontWeight: 600, color: C.textDark, marginBottom: 8 }}>Claude API Key</div>
+        <div style={{ fontSize: 12, fontWeight: 600, color: C.textDark, marginBottom: 8 }}>OpenAI API Key</div>
         <input
           type="password"
           value={key}
           onChange={e => { setKey(e.target.value); setError(""); }}
-          placeholder="sk-ant-api03-..."
+          placeholder="sk-proj-..."
           style={{ width: "100%", padding: "10px 12px", borderRadius: 8, border: `1px solid ${error ? C.danger : C.border}`, fontSize: 13, outline: "none", boxSizing: "border-box" }}
         />
         {error && <div style={{ fontSize: 11, color: C.danger, marginTop: 4 }}>{error}</div>}
@@ -288,7 +289,7 @@ function ApiKeyScreen({ onSubmit }) {
       </button>
 
       <div style={{ fontSize: 10, color: C.textLight, textAlign: "center", marginTop: 12, lineHeight: 1.5 }}>
-        API 키는 브라우저에서 직접 Anthropic 서버로 전송되며<br />
+        API 키는 브라우저에서 직접 OpenAI 서버로 전송되며<br />
         별도로 저장되지 않습니다
       </div>
     </div>
@@ -353,7 +354,7 @@ K-MMSE: ${p.kmmse}, PHQ-9: ${p.phq9}
 
     try {
       setStatus("streaming");
-      await callClaude(apiKey, BRIEFING_SYSTEM, userMsg, (text) => {
+      await callLLM(apiKey, BRIEFING_SYSTEM, userMsg, (text) => {
         setResult(text);
         if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
       });
@@ -390,7 +391,7 @@ K-MMSE: ${p.kmmse}, PHQ-9: ${p.phq9}
         {/* Generate Button */}
         {status === "idle" && (
           <button onClick={handleGenerate} style={{ width: "100%", padding: 14, background: `linear-gradient(135deg, ${C.primary}, ${C.accent})`, color: C.white, border: "none", borderRadius: 10, fontSize: 14, fontWeight: 700, cursor: "pointer", marginBottom: 12, display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
-            ✨ AI 환자 브리핑 생성 (Claude API)
+            ✨ AI 환자 브리핑 생성 (GPT-5.3)
           </button>
         )}
 
@@ -398,8 +399,8 @@ K-MMSE: ${p.kmmse}, PHQ-9: ${p.phq9}
         {status === "loading" && (
           <div style={{ background: C.white, borderRadius: 12, padding: 20, textAlign: "center", marginBottom: 12, border: `1px solid ${C.border}` }}>
             <div style={{ fontSize: 24, marginBottom: 8, display: "inline-block", animation: "spin 1s linear infinite" }}>🔄</div>
-            <div style={{ fontSize: 13, color: C.primary, fontWeight: 600 }}>Claude API 호출 중...</div>
-            <div style={{ fontSize: 11, color: C.textLight, marginTop: 4 }}>실제 AI가 환자 데이터를 분석하고 있습니다</div>
+            <div style={{ fontSize: 13, color: C.primary, fontWeight: 600 }}>GPT-5.3 API 호출 중...</div>
+            <div style={{ fontSize: 11, color: C.textLight, marginTop: 4 }}>GPT-5.3이 환자 데이터를 분석하고 있습니다</div>
           </div>
         )}
 
@@ -486,7 +487,7 @@ ${p.lastIssues}
 
     try {
       setStatus("streaming");
-      await callClaude(apiKey, SOAP_SYSTEM, userMsg, (text) => {
+      await callLLM(apiKey, SOAP_SYSTEM, userMsg, (text) => {
         setResult(text);
         if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
       });
@@ -523,7 +524,7 @@ ${p.lastIssues}
         {/* Generate Button */}
         {status === "idle" && (
           <button onClick={handleGenerate} style={{ width: "100%", padding: 14, background: `linear-gradient(135deg, ${C.accent}, ${C.primary})`, color: C.white, border: "none", borderRadius: 10, fontSize: 14, fontWeight: 700, cursor: "pointer", marginBottom: 12, display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
-            ✨ AI SOAP 노트 생성 (Claude API)
+            ✨ AI SOAP 노트 생성 (GPT-5.3)
           </button>
         )}
 
@@ -531,7 +532,7 @@ ${p.lastIssues}
         {status === "loading" && (
           <div style={{ background: C.white, borderRadius: 12, padding: 20, textAlign: "center", marginBottom: 12, border: `1px solid ${C.border}` }}>
             <div style={{ fontSize: 24, marginBottom: 8, display: "inline-block", animation: "spin 1s linear infinite" }}>🔄</div>
-            <div style={{ fontSize: 13, color: C.primary, fontWeight: 600 }}>Claude API로 SOAP 노트 생성 중...</div>
+            <div style={{ fontSize: 13, color: C.primary, fontWeight: 600 }}>GPT-5.3으로 SOAP 노트 생성 중...</div>
             <div style={{ fontSize: 11, color: C.textLight, marginTop: 4 }}>문진·활력징후·CGA-FI·인지평가를 종합 분석합니다</div>
           </div>
         )}
@@ -583,7 +584,7 @@ function CompleteScreen({ onRestart }) {
         <div style={{ fontSize: 18, fontWeight: 800, color: "#065F46" }}>진료기록 저장 완료</div>
         <div style={{ fontSize: 13, color: "#047857", marginTop: 8 }}>
           AI 브리핑 생성 + SOAP 노트 자동생성<br />
-          모두 실제 Claude API로 처리되었습니다
+          모두 실제 GPT-5.3 API로 처리되었습니다
         </div>
       </div>
 
