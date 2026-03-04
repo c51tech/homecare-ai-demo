@@ -262,6 +262,18 @@ function MarkdownText({ text }) {
       elements.push(<div key={i} style={{ fontSize: 11, color: "#CA8A04", fontWeight: 600, padding: "2px 0" }}>{renderInline(line)}</div>);
       i++; continue;
     }
+    // Checkbox: - [ ] or - [x]
+    if (/^\s*[-•]\s*\[[ x]\]\s/.test(line)) {
+      const checked = /\[x\]/i.test(line);
+      const label = line.replace(/^\s*[-•]\s*\[[ x]\]\s*/, "");
+      elements.push(
+        <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 6, padding: "2px 0 2px 8px" }}>
+          <span style={{ fontSize: 13, lineHeight: "20px", flexShrink: 0 }}>{checked ? "☑️" : "⬜"}</span>
+          <span>{renderInline(label)}</span>
+        </div>
+      );
+      i++; continue;
+    }
     // Bullet points
     if (/^\s*[-•]\s/.test(line) || /^\s*\d+\.\s/.test(line)) {
       elements.push(<div key={i} style={{ paddingLeft: 8, padding: "1px 0 1px 8px" }}>{renderInline(line)}</div>);
@@ -365,6 +377,18 @@ function SoapMarkdown({ text }) {
     if (line.startsWith("🟡")) { elements.push(<div key={i} style={{ fontSize: 11, color: "#CA8A04", fontWeight: 600, padding: "2px 0" }}>{renderInline(line)}</div>); i++; continue; }
     // Numbered items
     if (/^\d+\.\s/.test(line.trim())) { elements.push(<div key={i} style={{ fontWeight: 600, marginTop: 4, padding: "1px 0" }}>{renderInline(line)}</div>); i++; continue; }
+    // Checkbox: - [ ] or - [x]
+    if (/^\s*[-•]\s*\[[ x]\]\s/.test(line)) {
+      const checked = /\[x\]/i.test(line);
+      const label = line.replace(/^\s*[-•]\s*\[[ x]\]\s*/, "");
+      elements.push(
+        <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 6, padding: "2px 0 2px 10px" }}>
+          <span style={{ fontSize: 13, lineHeight: "20px", flexShrink: 0 }}>{checked ? "☑️" : "⬜"}</span>
+          <span>{renderInline(label)}</span>
+        </div>
+      );
+      i++; continue;
+    }
     // Bullets
     if (/^\s*[-•→]\s/.test(line)) { elements.push(<div key={i} style={{ paddingLeft: 10, padding: "1px 0 1px 10px" }}>{renderInline(line)}</div>); i++; continue; }
     // Empty
