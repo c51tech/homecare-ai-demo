@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 
 // ============================================================
-// HomeCare AI — Live Demo (OpenAI GPT-5.2 연동)
+// HomeCare AI — Live Demo (Claude / GPT 멀티모델 지원)
 // 실제 AI가 동작하는 간소화 버전
 // ============================================================
 
@@ -33,24 +33,61 @@ const PATIENT = {
   todayCGAFI: "21/50 (3점 상승)", todayKMMSE: "22/30 (3점 하락)", todayPHQ9: "10/27 (2점 상승)",
 };
 
-// --- OpenAI API Call ---
-async function callLLM(apiKey, systemPrompt, userMessage, onChunk) {
-  const res = await fetch("https://api.openai.com/v1/chat/completions", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "Authorization": `Bearer ${apiKey}`,
-    },
-    body: JSON.stringify({
-      model: "gpt-5.2",
-      max_completion_tokens: 8192,
-      stream: true,
-      messages: [
-        { role: "system", content: systemPrompt },
-        { role: "user", content: userMessage },
-      ],
-    }),
-  });
+// --- Model Providers ---
+const PROVIDERS = {
+  openai: {
+    label: "OpenAI GPT-5.2",
+    placeholder: "sk-proj-...",
+    prefix: "sk-",
+    prefixError: "올바른 OpenAI API 키를 입력해주세요 (sk-로 시작)",
+  },
+  claude: {
+    label: "Claude Sonnet 4.5",
+    placeholder: "sk-ant-api03-...",
+    prefix: "sk-ant-",
+    prefixError: "올바른 Claude API 키를 입력해주세요 (sk-ant-로 시작)",
+  },
+};
+
+// --- Unified LLM API Call ---
+async function callLLM(provider, apiKey, systemPrompt, userMessage, onChunk) {
+  let res;
+
+  if (provider === "openai") {
+    res = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        model: "gpt-5.2",
+        max_completion_tokens: 8192,
+        stream: true,
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: userMessage },
+        ],
+      }),
+    });
+  } else {
+    res = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-api-key": apiKey,
+        "anthropic-version": "2023-06-01",
+        "anthropic-dangerous-direct-browser-access": "true",
+      },
+      body: JSON.stringify({
+        model: "claude-sonnet-4-5-20250929",
+        max_tokens: 8192,
+        stream: true,
+        system: systemPrompt,
+        messages: [{ role: "user", content: userMessage }],
+      }),
+    });
+  }
 
   if (!res.ok) {
     const err = await res.text();
@@ -72,10 +109,14 @@ async function callLLM(apiKey, systemPrompt, userMessage, onChunk) {
         if (data === "[DONE]") continue;
         try {
           const parsed = JSON.parse(data);
-          const delta = parsed.choices?.[0]?.delta?.content;
-          if (delta) {
-            full += delta;
-            onChunk(full);
+          if (provider === "openai") {
+            const delta = parsed.choices?.[0]?.delta?.content;
+            if (delta) { full += delta; onChunk(full); }
+          } else {
+            if (parsed.type === "content_block_delta" && parsed.delta?.text) {
+              full += parsed.delta.text;
+              onChunk(full);
+            }
           }
         } catch {}
       }
@@ -238,13 +279,14 @@ function SoapMarkdown({ text }) {
   );
 }
 
-function StatusBar() {
+function StatusBar({ provider }) {
+  const modelShort = provider === "claude" ? "Claude" : provider === "openai" ? "GPT" : "AI";
   return (
     <div style={{ height: 44, background: C.primaryDark, display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 16px", color: C.white, fontSize: 12 }}>
       <span style={{ fontWeight: 600 }}>9:41</span>
       <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
         <span style={{ width: 6, height: 6, borderRadius: 3, background: C.success }} />
-        <span style={{ fontSize: 10 }}>HomeCare AI GPT</span>
+        <span style={{ fontSize: 10 }}>HomeCare AI · {modelShort}</span>
       </div>
       <span>🔋</span>
     </div>
@@ -253,15 +295,17 @@ function StatusBar() {
 
 // --- API Key Screen ---
 function ApiKeyScreen({ onSubmit }) {
+  const [provider, setProvider] = useState("openai");
   const [key, setKey] = useState("");
   const [error, setError] = useState("");
+  const prov = PROVIDERS[provider];
 
   const handleSubmit = () => {
-    if (!key.startsWith("sk-")) {
-      setError("올바른 OpenAI API 키를 입력해주세요 (sk-로 시작)");
+    if (!key.startsWith(prov.prefix)) {
+      setError(prov.prefixError);
       return;
     }
-    onSubmit(key);
+    onSubmit(provider, key);
   };
 
   return (
@@ -269,27 +313,47 @@ function ApiKeyScreen({ onSubmit }) {
       <div style={{ textAlign: "center", marginBottom: 32 }}>
         <div style={{ fontSize: 40, marginBottom: 12 }}>🏥</div>
         <div style={{ fontSize: 22, fontWeight: 800, color: C.primaryDark }}>HomeCare AI</div>
-        <div style={{ fontSize: 13, color: C.textMed, marginTop: 4 }}>Live Demo — GPT-5.2 API 연동</div>
+        <div style={{ fontSize: 13, color: C.textMed, marginTop: 4 }}>Live Demo — LLM API 실시간 연동</div>
+      </div>
+
+      {/* Model Selection */}
+      <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
+        {Object.entries(PROVIDERS).map(([id, p]) => (
+          <button
+            key={id}
+            onClick={() => { setProvider(id); setKey(""); setError(""); }}
+            style={{
+              flex: 1, padding: "10px 8px", borderRadius: 10, cursor: "pointer", fontSize: 12, fontWeight: 600,
+              border: provider === id ? `2px solid ${C.primary}` : `1px solid ${C.border}`,
+              background: provider === id ? C.tealBg : C.white,
+              color: provider === id ? C.primaryDark : C.textMed,
+              transition: "all 0.2s",
+            }}
+          >
+            <div style={{ fontSize: 18, marginBottom: 4 }}>{id === "openai" ? "🤖" : "🟠"}</div>
+            {p.label}
+          </button>
+        ))}
       </div>
 
       <div style={{ background: C.white, borderRadius: 12, padding: 16, marginBottom: 12, border: `1px solid ${C.border}` }}>
-        <div style={{ fontSize: 12, fontWeight: 600, color: C.textDark, marginBottom: 8 }}>OpenAI API Key</div>
+        <div style={{ fontSize: 12, fontWeight: 600, color: C.textDark, marginBottom: 8 }}>{prov.label} API Key</div>
         <input
           type="password"
           value={key}
           onChange={e => { setKey(e.target.value); setError(""); }}
-          placeholder="sk-proj-..."
+          placeholder={prov.placeholder}
           style={{ width: "100%", padding: "10px 12px", borderRadius: 8, border: `1px solid ${error ? C.danger : C.border}`, fontSize: 13, outline: "none", boxSizing: "border-box" }}
         />
         {error && <div style={{ fontSize: 11, color: C.danger, marginTop: 4 }}>{error}</div>}
       </div>
 
       <button onClick={handleSubmit} style={{ width: "100%", padding: 14, background: C.primary, color: C.white, border: "none", borderRadius: 10, fontSize: 15, fontWeight: 700, cursor: "pointer" }}>
-        시작하기
+        {prov.label}로 시작하기
       </button>
 
       <div style={{ fontSize: 10, color: C.textLight, textAlign: "center", marginTop: 12, lineHeight: 1.5 }}>
-        API 키는 브라우저에서 직접 OpenAI 서버로 전송되며<br />
+        API 키는 브라우저에서 직접 {provider === "openai" ? "OpenAI" : "Anthropic"} 서버로 전송되며<br />
         별도로 저장되지 않습니다
       </div>
     </div>
@@ -329,7 +393,7 @@ function HomeScreen({ onSelect }) {
 }
 
 // --- AI Briefing Screen (Real API) ---
-function BriefingScreen({ apiKey, onNext }) {
+function BriefingScreen({ provider, apiKey, onNext }) {
   const [status, setStatus] = useState("idle"); // idle, loading, streaming, done, error
   const [result, setResult] = useState("");
   const [error, setError] = useState("");
@@ -354,7 +418,7 @@ K-MMSE: ${p.kmmse}, PHQ-9: ${p.phq9}
 
     try {
       setStatus("streaming");
-      await callLLM(apiKey, BRIEFING_SYSTEM, userMsg, (text) => {
+      await callLLM(provider, apiKey, BRIEFING_SYSTEM, userMsg, (text) => {
         setResult(text);
         if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
       });
@@ -364,6 +428,8 @@ K-MMSE: ${p.kmmse}, PHQ-9: ${p.phq9}
       setStatus("error");
     }
   };
+
+  const modelLabel = PROVIDERS[provider]?.label || "AI";
 
   return (
     <div style={{ flex: 1, display: "flex", flexDirection: "column", background: C.bg, minHeight: 0 }}>
@@ -391,7 +457,7 @@ K-MMSE: ${p.kmmse}, PHQ-9: ${p.phq9}
         {/* Generate Button */}
         {status === "idle" && (
           <button onClick={handleGenerate} style={{ width: "100%", padding: 14, background: `linear-gradient(135deg, ${C.primary}, ${C.accent})`, color: C.white, border: "none", borderRadius: 10, fontSize: 14, fontWeight: 700, cursor: "pointer", marginBottom: 12, display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
-            ✨ AI 환자 브리핑 생성 (GPT-5.2)
+            ✨ AI 환자 브리핑 생성 ({modelLabel})
           </button>
         )}
 
@@ -399,8 +465,8 @@ K-MMSE: ${p.kmmse}, PHQ-9: ${p.phq9}
         {status === "loading" && (
           <div style={{ background: C.white, borderRadius: 12, padding: 20, textAlign: "center", marginBottom: 12, border: `1px solid ${C.border}` }}>
             <div style={{ fontSize: 24, marginBottom: 8, display: "inline-block", animation: "spin 1s linear infinite" }}>🔄</div>
-            <div style={{ fontSize: 13, color: C.primary, fontWeight: 600 }}>GPT-5.2 API 호출 중...</div>
-            <div style={{ fontSize: 11, color: C.textLight, marginTop: 4 }}>GPT-5.2이 환자 데이터를 분석하고 있습니다</div>
+            <div style={{ fontSize: 13, color: C.primary, fontWeight: 600 }}>{modelLabel} API 호출 중...</div>
+            <div style={{ fontSize: 11, color: C.textLight, marginTop: 4 }}>{modelLabel}이 환자 데이터를 분석하고 있습니다</div>
           </div>
         )}
 
@@ -442,7 +508,7 @@ K-MMSE: ${p.kmmse}, PHQ-9: ${p.phq9}
 }
 
 // --- SOAP Generation Screen (Real API) ---
-function SoapScreen({ apiKey, onDone }) {
+function SoapScreen({ provider, apiKey, onDone }) {
   const [status, setStatus] = useState("idle");
   const [result, setResult] = useState("");
   const [error, setError] = useState("");
@@ -487,7 +553,7 @@ ${p.lastIssues}
 
     try {
       setStatus("streaming");
-      await callLLM(apiKey, SOAP_SYSTEM, userMsg, (text) => {
+      await callLLM(provider, apiKey, SOAP_SYSTEM, userMsg, (text) => {
         setResult(text);
         if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
       });
@@ -498,7 +564,7 @@ ${p.lastIssues}
     }
   };
 
-  // (colorize removed — using SoapMarkdown instead)
+  const modelLabel = PROVIDERS[provider]?.label || "AI";
 
   return (
     <div style={{ flex: 1, display: "flex", flexDirection: "column", background: C.bg, minHeight: 0 }}>
@@ -524,7 +590,7 @@ ${p.lastIssues}
         {/* Generate Button */}
         {status === "idle" && (
           <button onClick={handleGenerate} style={{ width: "100%", padding: 14, background: `linear-gradient(135deg, ${C.accent}, ${C.primary})`, color: C.white, border: "none", borderRadius: 10, fontSize: 14, fontWeight: 700, cursor: "pointer", marginBottom: 12, display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
-            ✨ AI SOAP 노트 생성 (GPT-5.2)
+            ✨ AI SOAP 노트 생성 ({modelLabel})
           </button>
         )}
 
@@ -532,7 +598,7 @@ ${p.lastIssues}
         {status === "loading" && (
           <div style={{ background: C.white, borderRadius: 12, padding: 20, textAlign: "center", marginBottom: 12, border: `1px solid ${C.border}` }}>
             <div style={{ fontSize: 24, marginBottom: 8, display: "inline-block", animation: "spin 1s linear infinite" }}>🔄</div>
-            <div style={{ fontSize: 13, color: C.primary, fontWeight: 600 }}>GPT-5.2으로 SOAP 노트 생성 중...</div>
+            <div style={{ fontSize: 13, color: C.primary, fontWeight: 600 }}>{modelLabel}(으)로 SOAP 노트 생성 중...</div>
             <div style={{ fontSize: 11, color: C.textLight, marginTop: 4 }}>문진·활력징후·CGA-FI·인지평가를 종합 분석합니다</div>
           </div>
         )}
@@ -576,7 +642,8 @@ ${p.lastIssues}
 }
 
 // --- Complete Screen ---
-function CompleteScreen({ onRestart }) {
+function CompleteScreen({ provider, onRestart }) {
+  const modelLabel = PROVIDERS[provider]?.label || "AI";
   return (
     <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", padding: 24, background: C.bg }}>
       <div style={{ background: C.successBg, borderRadius: 16, padding: 24, textAlign: "center", border: "1px solid #A7F3D0", width: "100%" }}>
@@ -584,7 +651,7 @@ function CompleteScreen({ onRestart }) {
         <div style={{ fontSize: 18, fontWeight: 800, color: "#065F46" }}>진료기록 저장 완료</div>
         <div style={{ fontSize: 13, color: "#047857", marginTop: 8 }}>
           AI 브리핑 생성 + SOAP 노트 자동생성<br />
-          모두 실제 GPT-5.2 API로 처리되었습니다
+          모두 실제 {modelLabel} API로 처리되었습니다
         </div>
       </div>
 
@@ -609,28 +676,29 @@ function CompleteScreen({ onRestart }) {
 // MAIN APP
 // ============================================================
 export default function HomeCareAILive() {
+  const [provider, setProvider] = useState("");
   const [apiKey, setApiKey] = useState("");
   const [screen, setScreen] = useState("apikey");
 
   return (
     <div style={{ display: "flex", justifyContent: "center", alignItems: "center", minHeight: "100vh", background: "#E2E8F0", padding: 16 }}>
       <div style={{ width: 390, height: 844, background: C.bg, borderRadius: 32, overflow: "hidden", boxShadow: "0 20px 60px rgba(0,0,0,0.15)", display: "flex", flexDirection: "column", border: "8px solid #1E293B" }}>
-        <StatusBar />
+        <StatusBar provider={provider} />
 
         {screen === "apikey" && (
-          <ApiKeyScreen onSubmit={(k) => { setApiKey(k); setScreen("home"); }} />
+          <ApiKeyScreen onSubmit={(prov, k) => { setProvider(prov); setApiKey(k); setScreen("home"); }} />
         )}
         {screen === "home" && (
           <HomeScreen onSelect={() => setScreen("briefing")} />
         )}
         {screen === "briefing" && (
-          <BriefingScreen apiKey={apiKey} onNext={() => setScreen("soap")} />
+          <BriefingScreen provider={provider} apiKey={apiKey} onNext={() => setScreen("soap")} />
         )}
         {screen === "soap" && (
-          <SoapScreen apiKey={apiKey} onDone={() => setScreen("complete")} />
+          <SoapScreen provider={provider} apiKey={apiKey} onDone={() => setScreen("complete")} />
         )}
         {screen === "complete" && (
-          <CompleteScreen onRestart={() => setScreen("home")} />
+          <CompleteScreen provider={provider} onRestart={() => setScreen("home")} />
         )}
       </div>
 
