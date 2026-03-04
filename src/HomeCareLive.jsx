@@ -42,7 +42,7 @@ async function callLLM(apiKey, systemPrompt, userMessage, onChunk) {
       "Authorization": `Bearer ${apiKey}`,
     },
     body: JSON.stringify({
-      model: "gpt-5.3",
+      model: "gpt-5.2",
       max_tokens: 8192,
       stream: true,
       messages: [
