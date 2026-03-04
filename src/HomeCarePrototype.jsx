@@ -96,7 +96,7 @@ ADL 부분 의존 (입욕·이동 보조 필요)
 • 만성신장질환 3기: eGFR 42 → 38 (3개월 내 감소)
 • 골관절염: 좌측 무릎, 보행 시 통증 호소
 
-■ 현재 투약 (8개 — Beer's Criteria 주의)
+■ 현재 투약 (8개 — Beers Criteria 주의)
 🔴 클로르페니라민: 강한 항콜린 작용 → 2세대 전환 권고
 🟠 로라제팜 + 낙상 고위험: BZD 낙상위험 2배 → 비약물 수면관리
 🟡 글리메피리드 + eGFR 38: 지연성 저혈당 위험 → 용량 감량 검토
@@ -113,7 +113,7 @@ eGFR 38 mL/min ↓ | 크레아티닌 1.8 mg/dL
 
 ■ ⚠️ 금일 주의사항
 1. 신기능 악화 추세 — eGFR/크레아티닌 재확인
-2. 다약제 복용(8개) — Beer's Criteria 약물 재검토
+2. 다약제 복용(8개) — Beers Criteria 약물 재검토
 3. 혈당 조절 실패 — 인슐린 전환 의사결정
 4. 낙상 위험 — 환경 평가 + BZD 감량 논의`;
 
@@ -143,7 +143,7 @@ const SOAP_TEXT = {
    → 현 2제 요법 불충분, 3제 병합 또는 용량 증량 검토
 3. 만성신장질환: eGFR 38로 악화 추세
    → NSAID(이부프로펜) 즉시 중단 필요 (신독성)
-4. 다약제 — Beer's Criteria 경고 3건
+4. 다약제 — Beers Criteria 경고 3건
    🔴 클로르페니라민 → 세티리진 전환 권고
    🟠 로라제팜 → 비약물 수면위생 + 점진적 감량
    🟡 글리메피리드 → 신기능 고려 용량 감량
@@ -221,7 +221,7 @@ const CGA_DOMAINS = [
   ]},
 ];
 
-// --- Beer's Criteria Alerts ---
+// --- Beers Criteria Alerts ---
 const BEERS_ALERTS = [
   { layer: 1, color: C.danger, label: "PIM", drug: "클로르페니라민 4mg", reason: "강한 항콜린 작용 → 인지기능 저하, 변비, 요저류 위험", action: "세티리진 10mg으로 전환 권고" },
   { layer: 2, color: C.warning, label: "약물-질병", drug: "로라제팜 0.5mg + 낙상 고위험", reason: "벤조디아제핀 → 낙상 위험 2배 증가", action: "비약물 수면위생 + 점진적 감량" },
@@ -482,7 +482,7 @@ function QuestionnaireScreen({ patient, onNext }) {
               {q.type === "number" && (
                 <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                   <input type="number" defaultValue={q.value} style={{ width: 60, padding: "4px 8px", borderRadius: 6, border: `1px solid ${C.border}`, fontSize: 13, fontWeight: 600, color: q.value >= 5 ? C.danger : C.textDark }} readOnly />
-                  {q.value >= 5 && <span style={{ fontSize: 10, color: C.danger, fontWeight: 600 }}>⚠️ 5개 이상 → Beer's 분석 실행</span>}
+                  {q.value >= 5 && <span style={{ fontSize: 10, color: C.danger, fontWeight: 600 }}>⚠️ 5개 이상 → Beers 분석 실행</span>}
                 </div>
               )}
               {q.type === "select" && (
@@ -496,10 +496,10 @@ function QuestionnaireScreen({ patient, onNext }) {
           ))}
         </div>
 
-        {/* Beer's Criteria Alert (always show on domain 3) */}
+        {/* Beers Criteria Alert (always show on domain 3) */}
         {domainIdx === 2 && (
           <div style={{ background: "#FEF2F2", borderRadius: 12, padding: 14, marginBottom: 12, border: "1px solid #FECACA" }}>
-            <div style={{ fontSize: 13, fontWeight: 700, color: C.danger, marginBottom: 10 }}>⚠️ Beer's Criteria 약물 경고</div>
+            <div style={{ fontSize: 13, fontWeight: 700, color: C.danger, marginBottom: 10 }}>⚠️ Beers Criteria 약물 경고</div>
             {BEERS_ALERTS.map((a, i) => (
               <div key={i} style={{ background: C.white, borderRadius: 8, padding: 10, marginBottom: 8, borderLeft: `4px solid ${a.color}` }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4 }}>
@@ -813,7 +813,7 @@ function SummaryScreen({ patient, onHome }) {
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
               <span style={{ width: 8, height: 8, borderRadius: 4, background: C.danger }} />
-              <span style={{ fontSize: 11, color: C.textMed }}>Beer's Layer 1 — 클로르페니라민 즉시 전환 필요</span>
+              <span style={{ fontSize: 11, color: C.textMed }}>Beers Layer 1 — 클로르페니라민 즉시 전환 필요</span>
             </div>
           </div>
         </div>
