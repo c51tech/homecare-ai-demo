@@ -43,7 +43,7 @@ async function callLLM(apiKey, systemPrompt, userMessage, onChunk) {
     },
     body: JSON.stringify({
       model: "gpt-5.2",
-      max_tokens: 8192,
+      max_completion_tokens: 8192,
       stream: true,
       messages: [
         { role: "system", content: systemPrompt },
