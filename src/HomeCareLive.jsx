@@ -35,17 +35,17 @@ const PATIENT = {
 
 // --- Model Providers ---
 const PROVIDERS = {
-  openai: {
-    label: "OpenAI GPT-5.2",
-    placeholder: "sk-proj-...",
-    prefix: "sk-",
-    prefixError: "올바른 OpenAI API 키를 입력해주세요 (sk-로 시작)",
-  },
   claude: {
     label: "Claude Sonnet 4.5",
     placeholder: "sk-ant-api03-...",
     prefix: "sk-ant-",
     prefixError: "올바른 Claude API 키를 입력해주세요 (sk-ant-로 시작)",
+  },
+  openai: {
+    label: "OpenAI GPT-5.2",
+    placeholder: "sk-proj-...",
+    prefix: "sk-",
+    prefixError: "올바른 OpenAI API 키를 입력해주세요 (sk-로 시작)",
   },
 };
 
@@ -421,7 +421,7 @@ function StatusBar({ provider }) {
 
 // --- API Key Screen ---
 function ApiKeyScreen({ onSubmit }) {
-  const [provider, setProvider] = useState("openai");
+  const [provider, setProvider] = useState("claude");
   const [key, setKey] = useState("");
   const [error, setError] = useState("");
   const prov = PROVIDERS[provider];
