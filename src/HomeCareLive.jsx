@@ -176,58 +176,124 @@ const SOAP_SYSTEM = `당신은 재택의료 전문 AI 진료기록 생성 시스
 // ============================================================
 
 // --- Simple Markdown Renderer ---
+// --- Markdown Table Renderer ---
+function MarkdownTable({ rows }) {
+  if (!rows || rows.length === 0) return null;
+  const parseRow = (line) => line.replace(/^\|/, "").replace(/\|$/, "").split("|").map(c => c.trim());
+  const header = parseRow(rows[0]);
+  const dataRows = rows.filter((_, i) => i >= 2).map(parseRow); // skip separator row
+
+  return (
+    <div style={{ overflowX: "auto", margin: "6px 0" }}>
+      <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 10.5 }}>
+        <thead>
+          <tr>
+            {header.map((h, i) => (
+              <th key={i} style={{ padding: "5px 8px", background: C.primaryDark, color: C.white, fontWeight: 700, textAlign: "left", borderBottom: `2px solid ${C.primary}`, whiteSpace: "nowrap" }}>{renderInline(h)}</th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {dataRows.map((row, ri) => (
+            <tr key={ri} style={{ background: ri % 2 === 0 ? C.white : "#F8FAFC" }}>
+              {row.map((cell, ci) => (
+                <td key={ci} style={{ padding: "4px 8px", borderBottom: `1px solid ${C.border}`, color: C.textDark }}>{renderInline(cell)}</td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
 function MarkdownText({ text }) {
   if (!text) return null;
   const lines = text.split("\n");
+  const elements = [];
+  let i = 0;
+
+  while (i < lines.length) {
+    const line = lines[i];
+
+    // Table detection: line starts with | and has at least one more |
+    if (/^\|.+\|/.test(line.trim())) {
+      const tableRows = [];
+      while (i < lines.length && /^\|.+\|/.test(lines[i].trim())) {
+        tableRows.push(lines[i].trim());
+        i++;
+      }
+      // Need at least header + separator (2 rows)
+      if (tableRows.length >= 2 && /^[\|\s:=-]+$/.test(tableRows[1].replace(/[^|:=\-\s]/g, ""))) {
+        elements.push(<MarkdownTable key={`tbl-${i}`} rows={tableRows} />);
+      } else {
+        // Not a valid table, render as normal lines
+        tableRows.forEach((tr, j) => {
+          elements.push(<div key={`${i}-${j}`} style={{ padding: "1px 0" }}>{renderInline(tr)}</div>);
+        });
+      }
+      continue;
+    }
+
+    // Headers: ## or ■
+    if (/^#{1,3}\s/.test(line) || line.startsWith("■")) {
+      const label = line.replace(/^#{1,3}\s*/, "");
+      elements.push(<div key={i} style={{ fontSize: 13, fontWeight: 700, color: C.primaryDark, marginTop: i > 0 ? 12 : 0, marginBottom: 4 }}>{renderInline(label)}</div>);
+      i++; continue;
+    }
+    // Warning line
+    if (line.startsWith("⚠️") || line.includes("⚠️")) {
+      elements.push(<div key={i} style={{ fontSize: 12, fontWeight: 700, color: "#92400E", background: C.warningBg, padding: "4px 8px", borderRadius: 6, marginTop: 6, marginBottom: 2 }}>{renderInline(line)}</div>);
+      i++; continue;
+    }
+    // Beer's alerts (colored pills)
+    if (line.startsWith("🔴")) {
+      elements.push(<div key={i} style={{ fontSize: 11, color: C.danger, fontWeight: 600, padding: "2px 0" }}>{renderInline(line)}</div>);
+      i++; continue;
+    }
+    if (line.startsWith("🟠")) {
+      elements.push(<div key={i} style={{ fontSize: 11, color: "#D97706", fontWeight: 600, padding: "2px 0" }}>{renderInline(line)}</div>);
+      i++; continue;
+    }
+    if (line.startsWith("🟡")) {
+      elements.push(<div key={i} style={{ fontSize: 11, color: "#CA8A04", fontWeight: 600, padding: "2px 0" }}>{renderInline(line)}</div>);
+      i++; continue;
+    }
+    // Bullet points
+    if (/^\s*[-•]\s/.test(line) || /^\s*\d+\.\s/.test(line)) {
+      elements.push(<div key={i} style={{ paddingLeft: 8, padding: "1px 0 1px 8px" }}>{renderInline(line)}</div>);
+      i++; continue;
+    }
+    // Empty line
+    if (line.trim() === "") {
+      elements.push(<div key={i} style={{ height: 6 }} />);
+      i++; continue;
+    }
+    // Normal line
+    elements.push(<div key={i} style={{ padding: "1px 0" }}>{renderInline(line)}</div>);
+    i++;
+  }
+
   return (
     <div style={{ fontSize: 11.5, lineHeight: 1.7, color: C.textDark }}>
-      {lines.map((line, i) => {
-        // Headers: ## or ■
-        if (/^#{1,3}\s/.test(line) || line.startsWith("■")) {
-          const label = line.replace(/^#{1,3}\s*/, "");
-          return <div key={i} style={{ fontSize: 13, fontWeight: 700, color: C.primaryDark, marginTop: i > 0 ? 12 : 0, marginBottom: 4 }}>{label}</div>;
-        }
-        // Warning line
-        if (line.startsWith("⚠️") || line.includes("⚠️")) {
-          return <div key={i} style={{ fontSize: 12, fontWeight: 700, color: "#92400E", background: C.warningBg, padding: "4px 8px", borderRadius: 6, marginTop: 6, marginBottom: 2 }}>{line}</div>;
-        }
-        // Beer's alerts (colored pills)
-        if (line.startsWith("🔴")) {
-          return <div key={i} style={{ fontSize: 11, color: C.danger, fontWeight: 600, padding: "2px 0" }}>{renderInline(line)}</div>;
-        }
-        if (line.startsWith("🟠")) {
-          return <div key={i} style={{ fontSize: 11, color: "#D97706", fontWeight: 600, padding: "2px 0" }}>{renderInline(line)}</div>;
-        }
-        if (line.startsWith("🟡")) {
-          return <div key={i} style={{ fontSize: 11, color: "#CA8A04", fontWeight: 600, padding: "2px 0" }}>{renderInline(line)}</div>;
-        }
-        // Bullet points
-        if (/^\s*[-•]\s/.test(line) || /^\s*\d+\.\s/.test(line)) {
-          return <div key={i} style={{ paddingLeft: 8, padding: "1px 0 1px 8px" }}>{renderInline(line)}</div>;
-        }
-        // Empty line
-        if (line.trim() === "") {
-          return <div key={i} style={{ height: 6 }} />;
-        }
-        // Normal line
-        return <div key={i} style={{ padding: "1px 0" }}>{renderInline(line)}</div>;
-      })}
+      {elements}
     </div>
   );
 }
 
 function renderInline(text) {
-  // Bold: **text** or __text__
-  const parts = text.split(/(\*\*[^*]+?\*\*|__[^_]+?__)/g);
+  if (!text) return null;
+  // Split by **bold** first, then handle *italic/bold*
+  const parts = text.split(/(\*\*(?:(?!\*\*).)+\*\*)/g);
   return parts.map((part, i) => {
-    if ((part.startsWith("**") && part.endsWith("**")) || (part.startsWith("__") && part.endsWith("__"))) {
+    if (part.startsWith("**") && part.endsWith("**") && part.length > 4) {
       return <strong key={i} style={{ fontWeight: 700, color: C.textDark }}>{part.slice(2, -2)}</strong>;
     }
-    // Also handle single *text* as bold (Claude often uses this)
-    const subParts = part.split(/(\*[^*]+?\*)/g);
+    // Handle single *text* as emphasis (Claude often uses this)
+    const subParts = part.split(/(\*(?:(?!\*).)+\*)/g);
     if (subParts.length > 1) {
       return subParts.map((sp, j) => {
-        if (sp.startsWith("*") && sp.endsWith("*") && sp.length > 2) {
+        if (sp.startsWith("*") && sp.endsWith("*") && sp.length > 2 && !sp.startsWith("**")) {
           return <strong key={`${i}-${j}`} style={{ fontWeight: 600 }}>{sp.slice(1, -1)}</strong>;
         }
         return <span key={`${i}-${j}`}>{sp}</span>;
@@ -243,38 +309,64 @@ function SoapMarkdown({ text }) {
   const sectionColors = {
     "S": "#3B82F6", "O": "#10B981", "A": "#F59E0B", "P": "#8B5CF6"
   };
-  const sectionLabels = {
-    "S": "Subjective (주관적)", "O": "Objective (객관적)",
-    "A": "Assessment (평가)", "P": "Plan (계획)"
-  };
 
   const lines = text.split("\n");
+  const elements = [];
+  let i = 0;
+
+  while (i < lines.length) {
+    const line = lines[i];
+
+    // Table detection
+    if (/^\|.+\|/.test(line.trim())) {
+      const tableRows = [];
+      while (i < lines.length && /^\|.+\|/.test(lines[i].trim())) {
+        tableRows.push(lines[i].trim());
+        i++;
+      }
+      if (tableRows.length >= 2 && /^[\|\s:=-]+$/.test(tableRows[1].replace(/[^|:=\-\s]/g, ""))) {
+        elements.push(<MarkdownTable key={`tbl-${i}`} rows={tableRows} />);
+      } else {
+        tableRows.forEach((tr, j) => {
+          elements.push(<div key={`${i}-${j}`} style={{ padding: "1px 0" }}>{renderInline(tr)}</div>);
+        });
+      }
+      continue;
+    }
+
+    // SOAP section headers
+    let matched = false;
+    for (const [key, color] of Object.entries(sectionColors)) {
+      if (line.includes(`[${key} —`) || line.includes(`[${key}]`) || (line.startsWith(`## ${key}`) && line.includes("—"))) {
+        elements.push(
+          <div key={i} style={{ fontSize: 13, fontWeight: 700, color, marginTop: i > 0 ? 14 : 0, marginBottom: 4, padding: "4px 8px", background: color + "12", borderRadius: 6, borderLeft: `3px solid ${color}` }}>
+            {line.replace(/[\[\]#]/g, "").trim()}
+          </div>
+        );
+        matched = true;
+        break;
+      }
+    }
+    if (matched) { i++; continue; }
+
+    // Beer's / emoji alerts
+    if (line.startsWith("🔴")) { elements.push(<div key={i} style={{ fontSize: 11, color: C.danger, fontWeight: 600, padding: "2px 0" }}>{renderInline(line)}</div>); i++; continue; }
+    if (line.startsWith("🟠")) { elements.push(<div key={i} style={{ fontSize: 11, color: "#D97706", fontWeight: 600, padding: "2px 0" }}>{renderInline(line)}</div>); i++; continue; }
+    if (line.startsWith("🟡")) { elements.push(<div key={i} style={{ fontSize: 11, color: "#CA8A04", fontWeight: 600, padding: "2px 0" }}>{renderInline(line)}</div>); i++; continue; }
+    // Numbered items
+    if (/^\d+\.\s/.test(line.trim())) { elements.push(<div key={i} style={{ fontWeight: 600, marginTop: 4, padding: "1px 0" }}>{renderInline(line)}</div>); i++; continue; }
+    // Bullets
+    if (/^\s*[-•→]\s/.test(line)) { elements.push(<div key={i} style={{ paddingLeft: 10, padding: "1px 0 1px 10px" }}>{renderInline(line)}</div>); i++; continue; }
+    // Empty
+    if (line.trim() === "") { elements.push(<div key={i} style={{ height: 4 }} />); i++; continue; }
+    // Default
+    elements.push(<div key={i} style={{ padding: "1px 0" }}>{renderInline(line)}</div>);
+    i++;
+  }
+
   return (
     <div style={{ fontSize: 11.5, lineHeight: 1.7, color: C.textDark }}>
-      {lines.map((line, i) => {
-        // SOAP section headers
-        for (const [key, color] of Object.entries(sectionColors)) {
-          if (line.includes(`[${key} —`) || line.includes(`[${key}]`) || (line.startsWith(`## ${key}`) && line.includes("—"))) {
-            return (
-              <div key={i} style={{ fontSize: 13, fontWeight: 700, color, marginTop: i > 0 ? 14 : 0, marginBottom: 4, padding: "4px 8px", background: color + "12", borderRadius: 6, borderLeft: `3px solid ${color}` }}>
-                {line.replace(/[\[\]#]/g, "").trim()}
-              </div>
-            );
-          }
-        }
-        // Beer's / emoji alerts
-        if (line.startsWith("🔴")) return <div key={i} style={{ fontSize: 11, color: C.danger, fontWeight: 600, padding: "2px 0" }}>{renderInline(line)}</div>;
-        if (line.startsWith("🟠")) return <div key={i} style={{ fontSize: 11, color: "#D97706", fontWeight: 600, padding: "2px 0" }}>{renderInline(line)}</div>;
-        if (line.startsWith("🟡")) return <div key={i} style={{ fontSize: 11, color: "#CA8A04", fontWeight: 600, padding: "2px 0" }}>{renderInline(line)}</div>;
-        // Numbered items (e.g., "1. 제2형 당뇨:")
-        if (/^\d+\.\s/.test(line.trim())) return <div key={i} style={{ fontWeight: 600, marginTop: 4, padding: "1px 0" }}>{renderInline(line)}</div>;
-        // Bullets
-        if (/^\s*[-•→]\s/.test(line)) return <div key={i} style={{ paddingLeft: 10, padding: "1px 0 1px 10px" }}>{renderInline(line)}</div>;
-        // Empty
-        if (line.trim() === "") return <div key={i} style={{ height: 4 }} />;
-        // Default
-        return <div key={i} style={{ padding: "1px 0" }}>{renderInline(line)}</div>;
-      })}
+      {elements}
     </div>
   );
 }
