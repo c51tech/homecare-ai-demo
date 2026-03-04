@@ -4,7 +4,7 @@ import HomeCareLive from "./HomeCareLive";
 
 const tabs = [
   { id: "prototype", label: "UI 프로토타입", desc: "7화면 전체 플로우" },
-  { id: "live", label: "AI 라이브 데모", desc: "Claude API 실시간 연동" },
+  { id: "live", label: "AI 라이브 데모", desc: "GPT-5.2 API 실시간 연동" },
 ];
 
 export default function App() {

@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 
 // ============================================================
-// HomeCare AI — Live Demo (OpenAI GPT-5.3 연동)
+// HomeCare AI — Live Demo (OpenAI GPT-5.2 연동)
 // 실제 AI가 동작하는 간소화 버전
 // ============================================================
 
@@ -269,7 +269,7 @@ function ApiKeyScreen({ onSubmit }) {
       <div style={{ textAlign: "center", marginBottom: 32 }}>
         <div style={{ fontSize: 40, marginBottom: 12 }}>🏥</div>
         <div style={{ fontSize: 22, fontWeight: 800, color: C.primaryDark }}>HomeCare AI</div>
-        <div style={{ fontSize: 13, color: C.textMed, marginTop: 4 }}>Live Demo — GPT-5.3 API 연동</div>
+        <div style={{ fontSize: 13, color: C.textMed, marginTop: 4 }}>Live Demo — GPT-5.2 API 연동</div>
       </div>
 
       <div style={{ background: C.white, borderRadius: 12, padding: 16, marginBottom: 12, border: `1px solid ${C.border}` }}>
@@ -391,7 +391,7 @@ K-MMSE: ${p.kmmse}, PHQ-9: ${p.phq9}
         {/* Generate Button */}
         {status === "idle" && (
           <button onClick={handleGenerate} style={{ width: "100%", padding: 14, background: `linear-gradient(135deg, ${C.primary}, ${C.accent})`, color: C.white, border: "none", borderRadius: 10, fontSize: 14, fontWeight: 700, cursor: "pointer", marginBottom: 12, display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
-            ✨ AI 환자 브리핑 생성 (GPT-5.3)
+            ✨ AI 환자 브리핑 생성 (GPT-5.2)
           </button>
         )}
 
@@ -399,8 +399,8 @@ K-MMSE: ${p.kmmse}, PHQ-9: ${p.phq9}
         {status === "loading" && (
           <div style={{ background: C.white, borderRadius: 12, padding: 20, textAlign: "center", marginBottom: 12, border: `1px solid ${C.border}` }}>
             <div style={{ fontSize: 24, marginBottom: 8, display: "inline-block", animation: "spin 1s linear infinite" }}>🔄</div>
-            <div style={{ fontSize: 13, color: C.primary, fontWeight: 600 }}>GPT-5.3 API 호출 중...</div>
-            <div style={{ fontSize: 11, color: C.textLight, marginTop: 4 }}>GPT-5.3이 환자 데이터를 분석하고 있습니다</div>
+            <div style={{ fontSize: 13, color: C.primary, fontWeight: 600 }}>GPT-5.2 API 호출 중...</div>
+            <div style={{ fontSize: 11, color: C.textLight, marginTop: 4 }}>GPT-5.2이 환자 데이터를 분석하고 있습니다</div>
           </div>
         )}
 
@@ -524,7 +524,7 @@ ${p.lastIssues}
         {/* Generate Button */}
         {status === "idle" && (
           <button onClick={handleGenerate} style={{ width: "100%", padding: 14, background: `linear-gradient(135deg, ${C.accent}, ${C.primary})`, color: C.white, border: "none", borderRadius: 10, fontSize: 14, fontWeight: 700, cursor: "pointer", marginBottom: 12, display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
-            ✨ AI SOAP 노트 생성 (GPT-5.3)
+            ✨ AI SOAP 노트 생성 (GPT-5.2)
           </button>
         )}
 
@@ -532,7 +532,7 @@ ${p.lastIssues}
         {status === "loading" && (
           <div style={{ background: C.white, borderRadius: 12, padding: 20, textAlign: "center", marginBottom: 12, border: `1px solid ${C.border}` }}>
             <div style={{ fontSize: 24, marginBottom: 8, display: "inline-block", animation: "spin 1s linear infinite" }}>🔄</div>
-            <div style={{ fontSize: 13, color: C.primary, fontWeight: 600 }}>GPT-5.3으로 SOAP 노트 생성 중...</div>
+            <div style={{ fontSize: 13, color: C.primary, fontWeight: 600 }}>GPT-5.2으로 SOAP 노트 생성 중...</div>
             <div style={{ fontSize: 11, color: C.textLight, marginTop: 4 }}>문진·활력징후·CGA-FI·인지평가를 종합 분석합니다</div>
           </div>
         )}
@@ -584,7 +584,7 @@ function CompleteScreen({ onRestart }) {
         <div style={{ fontSize: 18, fontWeight: 800, color: "#065F46" }}>진료기록 저장 완료</div>
         <div style={{ fontSize: 13, color: "#047857", marginTop: 8 }}>
           AI 브리핑 생성 + SOAP 노트 자동생성<br />
-          모두 실제 GPT-5.3 API로 처리되었습니다
+          모두 실제 GPT-5.2 API로 처리되었습니다
         </div>
       </div>
 
